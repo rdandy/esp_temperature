@@ -8,17 +8,17 @@ Sketch > Include Library > Manage Libraries
 ## Circuit
 Single Parasite
 
-![Single Parasite](ds18b20_esp32_single_parasite_bb.png "Single Parasite")
+![Single Parasite](images/ds18b20_esp32_single_parasite_bb.png "Single Parasite")
 
 Single Normal
 
-![Single Normal](ds18b20_esp32_single_normal.png "Single Normal")
+![Single Normal](images/ds18b20_esp32_single_normal.png "Single Normal")
 
 Multiple
 
-![Multiple](ds18b20_esp32_multiple.png "Multiple")
+![Multiple](images/ds18b20_esp32_multiple.png "Multiple")
 
 Multiple image
 
-![Multiple image](multiple-ds18b20.png "Multiple image")
+![Multiple image](images/multiple-ds18b20.png "Multiple image")
 
