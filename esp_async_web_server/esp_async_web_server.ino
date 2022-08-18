@@ -21,9 +21,11 @@
 // icclude TM1637 lib
 #include <TM1637.h>
 
-// Data wire is connected to GPIO 4
-#define ONE_WIRE_BUS 4
+// Relay pin
 int RELAY = 21;
+
+// Temperature data wire is connected to GPIO 4
+int ONE_WIRE_BUS = 4;
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature sensor
@@ -41,19 +43,19 @@ String temperatureC = "";
 String host = "";
 // Timer variables
 unsigned long lastTime = 0;
-unsigned long timerDelay = 30000;
-unsigned long wifi_time_limit = 10000;
+unsigned long timerDelay = 2000;
+unsigned long wifi_time_limit = 20000;
 bool have_wifi = false;
 
 // Replace with your network credentials
-// const char *ssid = "ihavewateryounot";
-// const char *password = "rcazj0317";
+const char *ssid = "ihavewateryounot";
+const char *password = "rcazj0317";
 
-const char *ssid = "FLHShowroom";
-const char *password = "Showroom2021";
+// const char *ssid = "FLHShowroom";
+// const char *password = "Showroom2021";
 
 float high_temp = 26.0;
-float low_temp = 24.0;
+float low_temp = 22.0;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -266,21 +268,23 @@ void setup() {
     if ((millis() - lastTime) <= wifi_time_limit) {
       delay(500);
       Serial.print(".");
+    } else {
+      break;
     }
   }
   Serial.println();
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("WiFi Connected!");
     have_wifi = true;
+  } else {
+    Serial.print((String) "... Can not connect to " + ssid + ".");
   }
 
   lastTime = millis();
-  // Print ESP Local IP Address
-  String local_ip = WiFi.localIP().toString().c_str();
-  Serial.print("local_ip: " + local_ip);
-  // Serial.println(WiFi.localIP());
-  Serial.println(local_ip);
-  if (have_wifi == true) {
+  if (have_wifi) {
+    // Print ESP Local IP Address
+    String local_ip = WiFi.localIP().toString().c_str();
+    Serial.print("local_ip: " + local_ip + " and preparing web serverice...");
     // Route for root / web page
     server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send_P(200, "text/css", styles_css);
