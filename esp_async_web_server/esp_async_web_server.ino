@@ -4,19 +4,13 @@
 *********/
 
 // Import required libraries
-#ifdef ESP32
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <ESPAsyncWebServer.h>
-#else
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <Hash.h>
-#include <ESPAsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#endif
 #include <ctype.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <HTTPClient.h>
 
 // include TM1637 lib
 #include <TM1637.h>
@@ -44,10 +38,10 @@ String host = "";
 float tempC = 0.0;
 float tempF = 0.0;
 float high_temp = 26.0;
-float low_temp = 22.0;
+float low_temp = 23.0;
 String err_msg_h = "";
 String err_msg_l = "";
-bool have_wifi = false;
+boolean have_wifi = false;
 int relay_output = LOW;
 
 // Timer variables
@@ -55,12 +49,28 @@ unsigned long lastTime = 0;
 unsigned long timerDelay = 2000;
 unsigned long lastCheckWifiTime = 0;
 unsigned long timerCheckWifiDelay = 60000;
-unsigned long wifi_time_limit = 20000;
+unsigned long wifi_time_limit = 30000;
+unsigned long last_send_cloud_time = 0;
+unsigned long last_send_line_time = 0;
+unsigned long last_send_ifttt_time = 0;
+unsigned long send_cloud_time_limit = 20000;   // 免費的 thingspeak 間隔要15秒
+
+int abnormalCount = 0; //異常計次
+boolean Alerted = false; //通知是否已發
 
 // Replace with your network credentials
+// const char *ssid = "ihavewateryounot";
+// const char *password = "rcazj0317";
+// const char *ssid = "andyiphone";
+// const char *password = "iloveandy";
+
 const char *ssid = "ihavewateryounot";
 const char *password = "rcazj0317";
+
 String local_ip = "";
+
+// Line
+WiFiClientSecure client;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -182,11 +192,11 @@ setInterval(function () {
     type: "GET",
     dataType: "json",
     success: function(data) {
-      $("#temperaturec").innerHTML = data["temperaturec"];
-      $("#temperaturef").innerHTML = data["temperaturef"];
+      $("#temperaturec").html(data["temperaturec"]);
+      $("#temperaturef").html(data["temperaturef"]);
     },
     error: function() {
-      alert("Internet ERROR!!!");
+      console.log("Internet ERROR!!!");
     }
   });
 }, 10000);
@@ -280,56 +290,184 @@ String processor(const String &var) {
 
 
 void set_relay() {
-  Serial.println((String) "Relay is set to " + String(relay_output));
+  // Serial.println((String) "Relay is set to " + String(relay_output));
+  Serial.println("Relay is set to " + String(relay_output));
   digitalWrite(RELAY, relay_output);
 }
 
 
 void check_wifi() {
-  if (lastCheckWifiTime == 0){
-    Serial.print((String) "Connect to WiFi .." + ssid + " / " + password);
+  if (lastCheckWifiTime == 0) {
+    Serial.println((String) "Connect to WiFi .." + ssid + " / " + password);
+    // WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(500);
     WiFi.begin(ssid, password);
   }
 
-  if ((lastCheckWifiTime > 0) and (millis() - lastCheckWifiTime) < timerCheckWifiDelay) {
+  if ((lastCheckWifiTime > 0) and ((millis() - lastCheckWifiTime) < timerCheckWifiDelay)) {
     return;
   }
 
   // Test Wi-Fi status
   if (WiFi.status() == WL_CONNECTED) {
     lastCheckWifiTime = millis();
+    Serial.println("WiFi is connected!!!!!!!");
+    tm.display("o-o-");
+    delay(1000);
     have_wifi = true;
-    return;
+    // return;
   }
 
-  have_wifi = false;
-  Serial.print((String) "Checking WiFi .." + ssid + " / " + password);
+  Serial.println((String) "Checking WiFi .. " + ssid + " / " + password);
+  // while (WiFi.status() != WL_CONNECTED) {
   while (WiFi.status() != WL_CONNECTED) {
+    Serial.println((String) "WiFi Status : " + (String)WiFi.status());
     if ((millis() - lastCheckWifiTime) < wifi_time_limit) {
-      delay(500);
       Serial.print(">");
+      delay(500);
+      have_wifi = false;
     } else {
       break;
     }
   }
-  Serial.println();
+  Serial.println("Checking WiFi done ..");
   if (WiFi.status() == WL_CONNECTED) {
     have_wifi = true;
-    Serial.println("WiFi Connected!");
+    Serial.println("WiFi Connected!!!!!!!!");
   } else {
-    have_wifi = false;
-    Serial.print((String) "... Can not connect to " + ssid + ".");
-    ESP.restart();
+    Serial.println((String) "... Can not connect to " + ssid + ". Restart ESP32.");
+    // ESP.restart();
   }
   lastCheckWifiTime = millis();
 }
 
 
+void send_line() {
+  // 異常3次以下返回，不發Line
+  abnormalCount++;
+  if (abnormalCount <= 3) return;
+  // Line已發送過，不再發送
+  if (Alerted == true) return;
+  
+  if ((last_send_line_time > 0) and ((millis() - last_send_line_time) < send_cloud_time_limit)) {
+
+    Serial.println("line Time limit....");
+    Serial.print(last_send_line_time);
+    return;
+  }
+  Alerted = true;  //Line已發送
+  char host[] = "notify-api.line.me";
+
+  String token = "2wJPJZhq5Axd0PG9HnF5Xx31MG0dV7YauHdZh4Hulwz";
+  String message = "目前魚缸";
+  message += "\n溫度 C=" + temperatureC + " *C";
+  message += "\n溫度 F=" + temperatureF + " *F";
+  if (relay_output) {
+    message += "\nRelay =開";
+  } else {
+    message += "\nRelay =關";
+  }
+  message += "\n開啟 Relay 溫度=" + String(high_temp);
+  message += "\n關閉 Relay 溫度=" + String(low_temp);
+  Serial.println(message);
+
+  if (client.connect(host, 443)) {
+    int LEN = message.length();
+    //1.傳遞網站
+    String url = "/api/notify";  //Line API網址
+    client.println("POST " + url + " HTTP/1.1");
+    client.print("Host: ");
+    client.println(host);  //Line API網站
+    //2.資料表頭
+    client.print("Authorization: Bearer ");
+    client.println(token);
+    //3.內容格式
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    //4.資料內容
+    client.print("Content-Length: ");
+    client.println(String((LEN + 8)));  //訊息長度
+    client.println();
+    client.print("message=");
+    client.println(message);  //訊息內容
+    //等候回應
+    delay(2000);
+    String response = client.readString();
+    //顯示傳遞結果
+    Serial.println(response);
+    client.stop();  //斷線，否則只能傳5次
+    last_send_line_time = millis();
+  } else {
+    //傳送失敗
+    Serial.println("connected fail");
+  }
+}
+
+
+void send_ifttt() {
+  
+  String url = "http://maker.ifttt.com/trigger/storage508/with/key/bMrpjWsQxop14jbc5_rxtl";
+   if ((last_send_ifttt_time > 0) and ((millis() - last_send_ifttt_time) < send_cloud_time_limit)) {
+    Serial.println("IFTTT Time limit....");
+    return;
+  }
+
+  Serial.println((String) "Start web page connect .... ");
+  HTTPClient http;
+
+  // 以HTTP Get參數方式補入網址後方
+  String send_url = url + "?value1=" + temperatureC + "&value2=" + temperatureF + "&value3=" + String(relay_output);
+  //http client取得網頁內容
+  http.begin(send_url);
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK) {
+    //讀取網頁內容到payload
+    String payload = http.getString();
+    //將內容顯示出來
+    Serial.print((String) "Web content =");
+    Serial.println((String) payload);
+    
+    last_send_ifttt_time = millis();
+  } else {
+    //讀取失敗
+    Serial.println((String) "Web send fail .....");
+  }
+  http.end();
+}
+
+void send_thingspeak() {
+  if ((last_send_cloud_time > 0) and ((millis() - last_send_cloud_time) < send_cloud_time_limit)) {
+    Serial.println("Thingspeak Time limit....");
+    return;
+  }
+  String url = "https://api.thingspeak.com/update?api_key=NAP4KZR5ZBHYWGJL";
+  // if (have_wifi) {
+  Serial.println("Start ThingSpeak connect ...");
+  HTTPClient http;
+  String send_url = url + "&field1=" + temperatureC + "&field2=" + temperatureF + "&field3=" + (String)relay_output + "&field4=" + (float)high_temp + "&field5=" + (float)low_temp;
+  Serial.println((String) "Send data to ThingSpeak ..." + send_url);
+  //http client取得網頁內容
+  http.begin(send_url);
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK) {
+    //讀取網頁內容到payload
+    String payload = http.getString();
+    //將內容顯示出來
+    Serial.print((String) "ThingSpeak Web content=");
+    Serial.println(payload);
+  } else {
+    //讀取失敗
+    Serial.println((String) "ThingSpeak Web send fail ...");
+  }
+  http.end();
+  last_send_cloud_time = millis();
+
+}
+
 void setup() {
   // Serial port for debugging purposes
 
   Serial.begin(9600);
-  Serial.println();
   Serial.println((String) "SSID/Password: " + ssid + " / " + password);
 
   pinMode(RELAY, OUTPUT);
@@ -340,6 +478,7 @@ void setup() {
   tm.setBrightness(3);
   tm.display("INIT");
   delay(1000);
+
   // Start up the DS18B20 library
   sensors.begin();
   temperatureC = readDSTemperatureC();
@@ -351,32 +490,37 @@ void setup() {
     tm.display(temperatureC.toFloat());
   }
 
-  check_wifi();
+  // check_wifi();
 
   // Connect to Wi-Fi
-  // WiFi.begin(ssid, password);
-  // Serial.print("Connecting to WiFi ..");
-  // lastTime = millis();
-  // while (WiFi.status() != WL_CONNECTED) {
-  //   if ((millis() - lastTime) <= wifi_time_limit) {
-  //     delay(500);
-  //     Serial.print(".");
-  //   } else {
-  //     break;
-  //   }
-  // }
-  // Serial.println();
-  // if (WiFi.status() == WL_CONNECTED) {
-  //   Serial.println("WiFi Connected!");
-  //   have_wifi = true;
-  // } else {
-  //   Serial.print((String) "... Can not connect to " + ssid + ".");
-  // }
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi .. ");
+  lastTime = millis();
+  int try_count = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(String(WiFi.status()));
+    delay(1000);
+    if (try_count++ > 20) {
+      ESP.restart();
+    }
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi Connected!");
+    have_wifi = true;
+  } else {
+    Serial.print((String) "... Can not connect to " + ssid + ".");
+  }
 
   lastTime = millis();
   // Print ESP Local IP Address
+  // IPAddress local_ip = WiFi.localIP().toString();
   local_ip = WiFi.localIP().toString();
+
+  client.setInsecure();  // 使用ESP32 1.0.6核心須加上這句避免SSL問題
+
   Serial.println((String) "local_ip: " + local_ip + " and preparing web serverice...");
+
   // Route for root / web page
   server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send_P(200, "text/css", styles_css);
@@ -454,16 +598,23 @@ void loop() {
         relay_output = HIGH;
         set_relay();
 
+        send_line();
+
       } else if (cc <= low_temp) {
         Serial.println("Below low");
         // digitalWrite(RELAY, LOW);
         relay_output = LOW;
         set_relay();
       } else {
+        abnormalCount = 0;
+        Alerted = false;
+
         Serial.println("Temperature is OK!");
       }
+      lastTime = millis();
+      send_thingspeak();
+      send_ifttt();
+      // check_wifi();
     }
-    lastTime = millis();
   }
-  check_wifi();
 }
