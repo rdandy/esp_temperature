@@ -296,51 +296,51 @@ void set_relay() {
 }
 
 
-void check_wifi() {
-  if (lastCheckWifiTime == 0) {
-    Serial.println((String) "Connect to WiFi .." + ssid + " / " + password);
-    // WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(500);
-    WiFi.begin(ssid, password);
-  }
-
-  if ((lastCheckWifiTime > 0) and ((millis() - lastCheckWifiTime) < timerCheckWifiDelay)) {
-    return;
-  }
-
-  // Test Wi-Fi status
-  if (WiFi.status() == WL_CONNECTED) {
-    lastCheckWifiTime = millis();
-    Serial.println("WiFi is connected!!!!!!!");
-    tm.display("o-o-");
-    delay(1000);
-    have_wifi = true;
-    // return;
-  }
-
-  Serial.println((String) "Checking WiFi .. " + ssid + " / " + password);
-  // while (WiFi.status() != WL_CONNECTED) {
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.println((String) "WiFi Status : " + (String)WiFi.status());
-    if ((millis() - lastCheckWifiTime) < wifi_time_limit) {
-      Serial.print(">");
-      delay(500);
-      have_wifi = false;
-    } else {
-      break;
-    }
-  }
-  Serial.println("Checking WiFi done ..");
-  if (WiFi.status() == WL_CONNECTED) {
-    have_wifi = true;
-    Serial.println("WiFi Connected!!!!!!!!");
-  } else {
-    Serial.println((String) "... Can not connect to " + ssid + ". Restart ESP32.");
-    // ESP.restart();
-  }
-  lastCheckWifiTime = millis();
-}
+//void check_wifi() {
+//  if (lastCheckWifiTime == 0) {
+//    Serial.println((String) "Connect to WiFi .." + ssid + " / " + password);
+//    // WiFi.mode(WIFI_STA);
+//    WiFi.disconnect();
+//    delay(500);
+//    WiFi.begin(ssid, password);
+//  }
+//
+//  if ((lastCheckWifiTime > 0) and ((millis() - lastCheckWifiTime) < timerCheckWifiDelay)) {
+//    return;
+//  }
+//
+//  // Test Wi-Fi status
+//  if (WiFi.status() == WL_CONNECTED) {
+//    lastCheckWifiTime = millis();
+//    Serial.println("WiFi is connected!!!!!!!");
+//    tm.display("o-o-");
+//    delay(1000);
+//    have_wifi = true;
+//    // return;
+//  }
+//
+//  Serial.println((String) "Checking WiFi .. " + ssid + " / " + password);
+//  // while (WiFi.status() != WL_CONNECTED) {
+//  while (WiFi.status() != WL_CONNECTED) {
+//    Serial.println((String) "WiFi Status : " + (String)WiFi.status());
+//    if ((millis() - lastCheckWifiTime) < wifi_time_limit) {
+//      Serial.print(">");
+//      delay(500);
+//      have_wifi = false;
+//    } else {
+//      break;
+//    }
+//  }
+//  Serial.println("Checking WiFi done ..");
+//  if (WiFi.status() == WL_CONNECTED) {
+//    have_wifi = true;
+//    Serial.println("WiFi Connected!!!!!!!!");
+//  } else {
+//    Serial.println((String) "... Can not connect to " + ssid + ". Restart ESP32.");
+//    // ESP.restart();
+//  }
+//  lastCheckWifiTime = millis();
+//}
 
 
 void send_line() {

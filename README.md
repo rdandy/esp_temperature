@@ -1,30 +1,22 @@
 # ESP32 DS18B20 temperature
 ## Libraries
-- [One Wire library by Paul Stoffregen](https://github.com/PaulStoffregen/OneWire "One Wire library")
-- [Dallas Temperature library](https://github.com/milesburton/Arduino-Temperature-Control-Library "Dallas Temperature")
+- [One Wire](https://github.com/PaulStoffregen/OneWire "One Wire library") library by Paul Stoffregen
 
-Sketch > Include Library > Manage Libraries
+  ![Library - OneWire.png](images/Library%20-%20OneWire.png "OneWire")
+
+- [Dallas Temperature](https://github.com/milesburton/Arduino-Temperature-Control-Library "Dallas Temperature")
+
+  ![Dallas Temperature](images/Library%20-%20Dallas%20Temperature.png "Dallas Temperature")
+
+- Add libraries from Sketch -> Include Library -> Add .ZIP Library
+  ![Add library from zip file](images/add_library_from_zip_file.png "Add library from zip file")
+    + [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer/archive/refs/heads/master.zip "ESPAsyncWebServer") Zip file (.zip folder)
+    + [AsyncTCP](https://github.com/me-no-dev/AsyncTCP/archive/refs/heads/master.zip "AsyncTCP") (.zip folder)
 
 ## Seven Segment LED Display
-- Using TM1637 to display temperature celsius.
-- [TM1637 library](https://github.com/AKJ7/TM1637 "TM1637")
+- Using TM1637 module to display temperature celsius.
+  Choose <a href="https://github.com/AKJ7/TM1637" target="_blank">Library - TM1637 Driver</a> for ESP32
+  ![TM1637 Driver](images/Library%20-%20TM1637%20Driver.png "TM1637 Driver")
 
 ## SRD-05VDC-SL-C Relay
-- [SRD-05VDC-SL-C](https://diyi0t.com/relay-tutorial-for-arduino-and-esp8266/ "SRD-05VDC-SL-C")
-
-## Circuit
-Single Parasite
-
-![Single Parasite](images/ds18b20_esp32_single_parasite_bb.png "Single Parasite")
-
-Single Normal
-
-![Single Normal](images/ds18b20_esp32_single_normal.png "Single Normal")
-
-Multiple
-
-![Multiple](images/ds18b20_esp32_multiple.png "Multiple")
-
-Multiple image
-
-![Multiple image](images/multiple-ds18b20.png "Multiple image")
+- Ref: <a href="https://diyi0t.com/relay-tutorial-for-arduino-and-esp8266/" target="_blank">SRD-05VDC-SL-C</a>
