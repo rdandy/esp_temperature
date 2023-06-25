@@ -16,7 +16,7 @@
 #include <TM1637.h>
 
 // Relay pin
-int RELAY = 21;
+int RELAY = 22;
 
 // Temperature data wire is connected to GPIO 4
 int ONE_WIRE_BUS = 4;
@@ -64,7 +64,7 @@ boolean Alerted = false; //通知是否已發
 // const char *ssid = "andyiphone";
 // const char *password = "iloveandy";
 
-const char *ssid = "ihavewateryounot";
+const char *ssid = "sowhat";
 const char *password = "rcazj0317";
 
 String local_ip = "";
@@ -430,7 +430,7 @@ void send_ifttt() {
     last_send_ifttt_time = millis();
   } else {
     //讀取失敗
-    Serial.println((String) "Web send fail .....");
+    Serial.println((String) "Web send IFTTT fail ....."+httpCode);
   }
   http.end();
 }
@@ -440,8 +440,14 @@ void send_thingspeak() {
     Serial.println("Thingspeak Time limit....");
     return;
   }
+  
+  if (have_wifi == false) {
+    Serial.println("Can't connect WiFi, return");
+    return;
+  }
+  
   String url = "https://api.thingspeak.com/update?api_key=NAP4KZR5ZBHYWGJL";
-  // if (have_wifi) {
+
   Serial.println("Start ThingSpeak connect ...");
   HTTPClient http;
   String send_url = url + "&field1=" + temperatureC + "&field2=" + temperatureF + "&field3=" + (String)relay_output + "&field4=" + (float)high_temp + "&field5=" + (float)low_temp;
@@ -457,7 +463,7 @@ void send_thingspeak() {
     Serial.println(payload);
   } else {
     //讀取失敗
-    Serial.println((String) "ThingSpeak Web send fail ...");
+    Serial.println((String) "ThingSpeak Web send ThingSpeak fail ..."+httpCode);
   }
   http.end();
   last_send_cloud_time = millis();
@@ -478,6 +484,7 @@ void setup() {
   tm.setBrightness(3);
   tm.display("INIT");
   delay(1000);
+  tm.display("7_71");
 
   // Start up the DS18B20 library
   sensors.begin();
@@ -502,6 +509,7 @@ void setup() {
     Serial.print(String(WiFi.status()));
     delay(1000);
     if (try_count++ > 20) {
+      tm.display("7_7-");
       ESP.restart();
     }
   }
@@ -513,12 +521,14 @@ void setup() {
   }
 
   lastTime = millis();
+  local_ip = "0.0.0.0";
+  if (local_ip) {
+    // IPAddress local_ip = WiFi.localIP().toString();
+    local_ip = WiFi.localIP().toString();
+    client.setInsecure();  // 使用ESP32 1.0.6核心須加上這句避免SSL問題
+  }
+
   // Print ESP Local IP Address
-  // IPAddress local_ip = WiFi.localIP().toString();
-  local_ip = WiFi.localIP().toString();
-
-  client.setInsecure();  // 使用ESP32 1.0.6核心須加上這句避免SSL問題
-
   Serial.println((String) "local_ip: " + local_ip + " and preparing web serverice...");
 
   // Route for root / web page
@@ -575,7 +585,10 @@ void setup() {
     request->redirect("/");
   });
   // Start server
-  server.begin();
+  if (have_wifi) {
+    server.begin();
+  }
+  
 }
 
 
